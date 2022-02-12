@@ -1,1 +1,4 @@
 kancolle-main/
+*.js
+*.json
+*.csv

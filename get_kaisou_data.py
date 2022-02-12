@@ -1,6 +1,8 @@
+from math import fabs
 import re
 import json
 import requests
+import pandas as pd
 
 kaisou_data = {}
 """
@@ -80,6 +82,7 @@ with open(api_start2_json_path, 'r', encoding='utf8') as f:
         if after_ship_id:
             cur_ship_id = ship["api_id"]
             kaisou_data[cur_ship_id] = {
+                'name':id2name[cur_ship_id],
                 "api_id": after_ship_id,        # 改造后id
                 "cur_ship_id": cur_ship_id,     # 当前id
                 "ammo": ship["api_afterbull"],  # 改造弹耗
@@ -196,49 +199,29 @@ for k, v in kaisou_data.items():
 
 # print(kaisou_data)
 
-# step 5.1: generate output
-print('step 5.1: generate output')
-output = {}
-output_for_human = {}
-for cur_ship_id, item in kaisou_data.items():
-    msg = []
-    key_name = [
-        ("drawing",     "改装设计图"), 
-        ("buildkit",    "高速建造材"),
-        ("devkit",      "开发资材"),
-        ("catapult",    "试制甲板用弹射器"),
-        ("report",      "战斗详报"),
-        ("aviation",    "新型航空兵装资材"),
-        ("hokoheso",    "新型火炮兵装资材"),
-        ("arms",        "新型兵装资材"),
-    ]
-    for key, name in key_name:
-        if key in item and item[key] > 0:
-            msg.append(f'{name}x{item[key]}')
+with open("kaisou_dict.json",'w+') as f:
+    json.dump(kaisou_data,f,ensure_ascii=False)
 
-    if msg:
-        output[cur_ship_id] = ' '.join(msg)     # 以cur_ship_id作为key，改造才是唯一的。不能以转换后的船为key，因为一艘船可以由她的上位或下位转换而来，存在多种情况
-                                                # 换句话说：舰娘的依改造关系形成一个有向图，每个节点的出度只能是0或1，但入度可以大于1；因此表达改造关系时，可使用「起点」带代指，但不能用「终点」
-        name1 = id2name[item["cur_ship_id"]]
-        name2 = id2name[item["api_id"]]
-        output_for_human[cur_ship_id] = f'{name1} -> {name2}: ' + output[cur_ship_id]
-        # sortno1 = id2sortno[item["cur_ship_id"]]
-        # sortno2 = id2sortno[item["api_id"]]
-        # id2 = item["api_id"]
-        # output_for_human[cur_ship_id] = f'{name1}(图鉴{sortno1}) -> {name2}(图鉴{sortno2})(id={id2}): ' + output[cur_ship_id]
+name2id = {}
 
+for id,name in id2name.items():
+    name2id[name]=id
 
-# step 5.2: output and save
-print('step 5.2: output and save')
-for k, v in output_for_human.items():
-    print(f'"{k}": "{v}",')
+dockyard = pd.read_csv('dock.csv')
 
-output_path = './kaisou_data.json'
-with open(output_path, 'w', encoding='utf8') as f:
-    json.dump(output, f, ensure_ascii=False, sort_keys=True, indent=4)
-    print(f'saved to {output_path} successfully!')
-
-output_path = './kaisou_data_for_human.json'
-with open(output_path, 'w', encoding='utf8') as f:
-    json.dump(output_for_human, f, ensure_ascii=False, sort_keys=True, indent=4)
-    print(f'saved to {output_path} successfully!')
+with open('result.csv','w+') as f:
+    #         ("drawing",     "改装设计图"), 
+    #         ("buildkit",    "高速建造材"),
+    #         ("devkit",      "开发资材"),
+    #         ("catapult",    "试制甲板用弹射器"),
+    #         ("report",      "战斗详报"),
+    #         ("aviation",    "新型航空兵装资材"),
+    #         ("hokoheso",    "新型火炮兵装资材"),
+    #         ("arms",        "新型兵装资材"),
+    f.write('名称,改装设计图,高速建造资材,开发资材,试制甲板用弹射器,战斗详报,新型航空兵装资材,新型火炮兵装资材,新型兵装资材\n')
+    for _,id in enumerate(dockyard['舰名']):
+        try:
+            ship = kaisou_data[name2id[id]]
+            f.write("{},{},{},{},{},{},{},{},{}\n".format(ship['name'],ship['drawing'],ship['buildkit'],ship['devkit'],ship['catapult'],ship['report'],ship['aviation'],ship['hokoheso'],ship['arms']))
+        except :
+            pass
